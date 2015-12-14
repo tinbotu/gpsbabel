@@ -182,6 +182,7 @@ static char* opt_baud;
 static char* opt_append;
 static char* opt_gisteq;
 static char* opt_ignorefix;
+static char* opt_cs1k;
 
 static long sleepus;
 static int getposn;
@@ -212,6 +213,7 @@ arglist_t nmea_args[] = {
   {"baud", &opt_baud, "Speed in bits per second of serial port (baud=4800)", NULL, ARGTYPE_INT, ARG_NOMINMAX },
   {"gisteq", &opt_gisteq, "Write tracks for Gisteq Phototracker", "0", ARGTYPE_BOOL, ARG_NOMINMAX },
   {"ignore_fix", &opt_ignorefix, "Accept position fixes in gpgga marked invalid", "0", ARGTYPE_BOOL, ARG_NOMINMAX },
+  {"gpscs1k", &opt_cs1k, "NMEA for SONY GPS Image Tracker (GPS-CS1k compatible)", "0", ARGTYPE_BOOL, ARG_NOMINMAX },
   ARG_TERMINATOR
 };
 
@@ -275,6 +277,7 @@ nmea_rd_init(const char* fname)
   CHECK_BOOL(opt_gpvtg);
   CHECK_BOOL(opt_gpgsa);
   CHECK_BOOL(opt_gisteq);
+  CHECK_BOOL(opt_cs1k);
 
   QUEUE_INIT(&pcmpt_head);
 
@@ -327,6 +330,7 @@ nmea_wr_init(const char* portname)
   CHECK_BOOL(opt_gpvtg);
   CHECK_BOOL(opt_gpgsa);
   CHECK_BOOL(opt_gisteq);
+  CHECK_BOOL(opt_cs1k);
 
   append_output = atoi(opt_append);
 
@@ -339,6 +343,10 @@ nmea_wr_init(const char* portname)
     } else {
       sleepus = -1;
     }
+  }
+
+  if(!atoi(opt_append) && opt_cs1k){
+    gbfprintf(file_out, "@Sonygps/ver1.0/wgs-84\n");
   }
 
   mkshort_handle = mkshort_new_handle();
@@ -1343,7 +1351,10 @@ nmea_trackpt_pr(const Waypoint* wpt)
     gbfprintf(file_out, "$%s*%02X\n", obuf, cksum);
   }
   if ((opt_gpvtg) && (WAYPT_HAS(wpt, course) || WAYPT_HAS(wpt, speed))) {
-    snprintf(obuf,sizeof(obuf),"GPVTG,%.3f,T,0,M,%.3f,N,%.3f,K",
+    snprintf(obuf,sizeof(obuf),
+             opt_cs1k ?
+             "GPVTG,%.3f,T,,M,%.3f,N,%.3f,K" :
+             "GPVTG,%.3f,T,0,M,%.3f,N,%.3f,K",
              WAYPT_HAS(wpt, course) ? (wpt->course):(0),
              WAYPT_HAS(wpt, speed) ? MPS_TO_KNOTS(wpt->speed):(0),
              WAYPT_HAS(wpt, speed) ? MPS_TO_KPH(wpt->speed):(0));
